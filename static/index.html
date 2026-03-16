@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>W7TLG — FT-991A</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #111; color: #ddd; font-family: 'Helvetica Neue', Arial, sans-serif; padding: 16px; min-height: 100vh; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #222; }
+.topbar-title { font-size: 12px; letter-spacing: 2px; color: #555; text-transform: uppercase; }
+.clocks { display: flex; gap: 20px; }
+.clock-block .time { font-size: 20px; font-weight: 300; color: #00e5a0; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.clock-block .label { font-size: 10px; color: #444; letter-spacing: 1px; text-transform: uppercase; text-align: right; }
+.status-dots { display: flex; gap: 10px; align-items: center; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #2a2a2a; }
+.dot.on { background: #00e5a0; }
+.dot-label { font-size: 10px; color: #444; }
+
+.main-grid { display: grid; grid-template-columns: 320px 1fr 1fr; gap: 12px; max-width: 1100px; }
+
+.card { background: #191919; border: 1px solid #252525; border-radius: 10px; padding: 14px; }
+.card-title { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #444; margin-bottom: 12px; }
+
+.vfo-card { grid-row: 1 / 3; }
+.vfo-tag { font-size: 10px; color: #444; letter-spacing: 1px; margin-bottom: 4px; }
+.vfo-freq { font-size: 36px; font-weight: 200; color: #00e5a0; letter-spacing: 2px; font-variant-numeric: tabular-nums; line-height: 1; }
+.vfo-freq .unit { font-size: 14px; color: #333; margin-left: 3px; }
+.vfo-freq.vfob { font-size: 22px; color: #4a9eff; margin-top: 8px; }
+.vfo-mode-badge { display: inline-block; font-size: 11px; color: #00e5a0; border: 1px solid #004d35; border-radius: 4px; padding: 2px 8px; margin-top: 5px; letter-spacing: 1px; }
+.vfo-mode-badge.vfob { color: #4a9eff; border-color: #1a2d4d; }
+.vfo-block { margin-bottom: 14px; }
+
+.step-row { display: flex; gap: 5px; margin: 10px 0; flex-wrap: wrap; align-items: center; }
+.step-label { font-size: 10px; color: #444; margin-right: 2px; }
+.step-btn { background: #222; border: 1px solid #2e2e2e; color: #777; padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; transition: all 0.12s; }
+.step-btn:hover { background: #2a2a2a; color: #aaa; }
+.step-btn.active { background: #003d2a; border-color: #00e5a0; color: #00e5a0; }
+
+.tune-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.tune-btn { flex: 1; background: #222; border: 1px solid #2e2e2e; color: #888; padding: 7px; border-radius: 6px; cursor: pointer; font-size: 16px; transition: all 0.12s; }
+.tune-btn:hover { background: #2e2e2e; color: #fff; }
+.tune-btn:active { background: #003d2a; }
+
+.freq-go-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.freq-go-row input { flex: 1; background: #141414; border: 1px solid #2e2e2e; color: #ddd; padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.freq-go-row input:focus { outline: none; border-color: #00e5a0; }
+.go-btn { background: #003d2a; border: 1px solid #00e5a0; color: #00e5a0; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.go-btn:hover { background: #005a3d; }
+
+.band-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px; }
+.band-btn { background: #1e1e1e; border: 1px solid #2a2a2a; color: #777; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; transition: all 0.12s; }
+.band-btn:hover { background: #262626; color: #bbb; }
+.band-btn.active { background: #003d2a; border-color: #00e5a0; color: #00e5a0; }
+
+.split-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid #1e1e1e; }
+.split-label { font-size: 12px; color: #555; }
+
+.mode-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.mode-btn { background: #1e1e1e; border: 1px solid #2a2a2a; color: #777; padding: 6px 13px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.12s; }
+.mode-btn:hover { background: #262626; color: #bbb; }
+.mode-btn.active { background: #1a2d4d; border-color: #4a9eff; color: #4a9eff; }
+
+.meter-block { margin-bottom: 12px; }
+.meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.meter-name { font-size: 11px; color: #555; letter-spacing: 1px; }
+.meter-val { font-size: 13px; color: #aaa; font-variant-numeric: tabular-nums; }
+.meter-bar { width: 100%; height: 10px; background: #141414; border-radius: 3px; overflow: hidden; border: 1px solid #1e1e1e; }
+.meter-fill { height: 100%; border-radius: 3px; transition: width 0.25s; }
+.meter-fill.signal { background: linear-gradient(to right, #00e5a0 0%, #00e5a0 60%, #ffcc00 80%, #ff4444 100%); }
+.meter-fill.power { background: linear-gradient(to right, #4a9eff, #00e5a0); }
+.meter-fill.swr { background: linear-gradient(to right, #00e5a0 0%, #ffcc00 50%, #ff4444 80%); }
+.meter-fill.alc { background: linear-gradient(to right, #4a9eff, #ffcc00); }
+.meter-tick-row { display: flex; justify-content: space-between; margin-top: 2px; }
+.meter-tick { font-size: 9px; color: #333; }
+
+.meter-select-row { display: flex; gap: 5px; margin-bottom: 12px; }
+.msel-btn { background: #1e1e1e; border: 1px solid #2a2a2a; color: #555; padding: 3px 9px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.12s; }
+.msel-btn:hover { color: #aaa; }
+.msel-btn.active { background: #1e2a1e; border-color: #00e5a0; color: #00e5a0; }
+
+.slider-block { margin-bottom: 10px; }
+.slider-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.slider-name { font-size: 11px; color: #555; }
+.slider-val { font-size: 11px; color: #888; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: pointer; }
+
+.toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tog-item { display: flex; align-items: center; justify-content: space-between; background: #141414; border: 1px solid #1e1e1e; border-radius: 7px; padding: 8px 10px; }
+.tog-name { font-size: 12px; color: #777; }
+.toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.tslider { position: absolute; inset: 0; background: #222; border-radius: 10px; cursor: pointer; border: 1px solid #2e2e2e; transition: background 0.2s; }
+.tslider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; background: #555; border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+.toggle input:checked + .tslider { background: #003d2a; border-color: #00e5a0; }
+.toggle input:checked + .tslider:before { transform: translateX(16px); background: #00e5a0; }
+
+.agc-row { display: flex; gap: 5px; margin-top: 10px; }
+.agc-btn { flex: 1; background: #1e1e1e; border: 1px solid #2a2a2a; color: #666; padding: 5px 4px; border-radius: 5px; cursor: pointer; font-size: 11px; text-align: center; transition: all 0.12s; }
+.agc-btn:hover { color: #aaa; }
+.agc-btn.active { background: #1a2d4d; border-color: #4a9eff; color: #4a9eff; }
+
+.notch-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e1e1e; }
+.notch-label { font-size: 11px; color: #555; width: 52px; flex-shrink: 0; }
+
+.preamp-btn { background: #1e1e1e; border: 1px solid #2a2a2a; color: #666; padding: 5px 14px; border-radius: 5px; cursor: pointer; font-size: 12px; min-width: 58px; text-align: center; transition: all 0.12s; }
+.preamp-btn.amp { border-color: #ffcc00; color: #ffcc00; background: #1e1a00; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">W7TLG &mdash; FT-991A Control</div>
+  <div class="clocks">
+    <div class="clock-block">
+      <div class="time" id="clock-local">--:--:--</div>
+      <div class="label">Local</div>
+    </div>
+    <div class="clock-block">
+      <div class="time" id="clock-utc">--:--:--</div>
+      <div class="label">UTC</div>
+    </div>
+  </div>
+  <div class="status-dots">
+    <div class="dot" id="dot-ws"></div><span class="dot-label">WS</span>
+    <div class="dot" id="dot-rig"></div><span class="dot-label">RIG</span>
+  </div>
+</div>
+
+<div class="main-grid">
+
+  <!-- VFO Card -->
+  <div class="card vfo-card">
+    <div class="card-title">VFO</div>
+    <div class="vfo-block">
+      <div class="vfo-tag">VFO A</div>
+      <div class="vfo-freq" id="vfoa-freq">--.------<span class="unit">MHz</span></div>
+      <div class="vfo-mode-badge" id="vfoa-mode">---</div>
+    </div>
+    <div class="vfo-block">
+      <div class="vfo-tag">VFO B</div>
+      <div class="vfo-freq vfob" id="vfob-freq">--.------<span class="unit">MHz</span></div>
+      <div class="vfo-mode-badge vfob" id="vfob-mode">---</div>
+    </div>
+
+    <div class="step-row">
+      <span class="step-label">STEP</span>
+      <button class="step-btn" data-step="1">1Hz</button>
+      <button class="step-btn" data-step="10">10Hz</button>
+      <button class="step-btn" data-step="100">100Hz</button>
+      <button class="step-btn active" data-step="1000">1kHz</button>
+      <button class="step-btn" data-step="10000">10kHz</button>
+      <button class="step-btn" data-step="100000">100kHz</button>
+    </div>
+
+    <div class="tune-row">
+      <button class="tune-btn" onclick="stepFreq(-10)">&#171;</button>
+      <button class="tune-btn" onclick="stepFreq(-1)">&#8249;</button>
+      <button class="tune-btn" onclick="stepFreq(1)">&#8250;</button>
+      <button class="tune-btn" onclick="stepFreq(10)">&#187;</button>
+    </div>
+
+    <div class="freq-go-row">
+      <input type="text" id="freq-input" placeholder="14.225 or 14225000" />
+      <button class="go-btn" onclick="setFreqManual()">Go</button>
+    </div>
+
+    <div class="card-title">Band</div>
+    <div class="band-grid">
+      <button class="band-btn" onclick="setBand(1800000)">160m</button>
+      <button class="band-btn" onclick="setBand(3573000)">80m</button>
+      <button class="band-btn" onclick="setBand(7074000)">40m</button>
+      <button class="band-btn" onclick="setBand(10136000)">30m</button>
+      <button class="band-btn" onclick="setBand(14074000)">20m</button>
+      <button class="band-btn" onclick="setBand(18100000)">17m</button>
+      <button class="band-btn" onclick="setBand(21074000)">15m</button>
+      <button class="band-btn" onclick="setBand(24915000)">12m</button>
+      <button class="band-btn" onclick="setBand(28074000)">10m</button>
+      <button class="band-btn" onclick="setBand(50313000)">6m</button>
+    </div>
+
+
+  </div>
+
+  <!-- Mode + Meters -->
+  <div class="card">
+    <div class="card-title">Mode</div>
+    <div class="mode-grid">
+      <button class="mode-btn" onclick="setMode('USB')">USB</button>
+      <button class="mode-btn" onclick="setMode('LSB')">LSB</button>
+      <button class="mode-btn" onclick="setMode('CW')">CW</button>
+      <button class="mode-btn" onclick="setMode('CWR')">CW-R</button>
+      <button class="mode-btn" onclick="setMode('AM')">AM</button>
+      <button class="mode-btn" onclick="setMode('FM')">FM</button>
+      <button class="mode-btn" onclick="setMode('PKTUSB')">FT8</button>
+      <button class="mode-btn" onclick="setMode('PKTLSB')">FT8-L</button>
+    </div>
+
+    <div class="card-title">Meters</div>
+    <div class="meter-select-row">
+      <button class="msel-btn active" data-meter="signal" onclick="selectMeter('signal')">SIG</button>
+      <button class="msel-btn" data-meter="power" onclick="selectMeter('power')">PWR</button>
+      <button class="msel-btn" data-meter="swr" onclick="selectMeter('swr')">SWR</button>
+      <button class="msel-btn" data-meter="alc" onclick="selectMeter('alc')">ALC</button>
+    </div>
+
+    <div class="meter-block" id="meter-signal">
+      <div class="meter-header"><span class="meter-name">SIGNAL STRENGTH</span><span class="meter-val" id="val-signal">S0</span></div>
+      <div class="meter-bar"><div class="meter-fill signal" id="fill-signal" style="width:0%"></div></div>
+      <div class="meter-tick-row"><span class="meter-tick">S1</span><span class="meter-tick">S3</span><span class="meter-tick">S5</span><span class="meter-tick">S7</span><span class="meter-tick">S9</span><span class="meter-tick">+20</span><span class="meter-tick">+40</span></div>
+    </div>
+    <div class="meter-block" id="meter-power" style="display:none">
+      <div class="meter-header"><span class="meter-name">TX POWER</span><span class="meter-val" id="val-power">0W</span></div>
+      <div class="meter-bar"><div class="meter-fill power" id="fill-power" style="width:0%"></div></div>
+      <div class="meter-tick-row"><span class="meter-tick">0</span><span class="meter-tick">25W</span><span class="meter-tick">50W</span><span class="meter-tick">75W</span><span class="meter-tick">100W</span></div>
+    </div>
+    <div class="meter-block" id="meter-swr" style="display:none">
+      <div class="meter-header"><span class="meter-name">SWR</span><span class="meter-val" id="val-swr">1.0</span></div>
+      <div class="meter-bar"><div class="meter-fill swr" id="fill-swr" style="width:0%"></div></div>
+      <div class="meter-tick-row"><span class="meter-tick">1.0</span><span class="meter-tick">1.5</span><span class="meter-tick">2.0</span><span class="meter-tick">3.0</span><span class="meter-tick">&#8734;</span></div>
+    </div>
+    <div class="meter-block" id="meter-alc" style="display:none">
+      <div class="meter-header"><span class="meter-name">ALC</span><span class="meter-val" id="val-alc">0</span></div>
+      <div class="meter-bar"><div class="meter-fill alc" id="fill-alc" style="width:0%"></div></div>
+    </div>
+
+    <div class="card-title" style="margin-top:14px">Levels</div>
+    <div class="slider-block">
+      <div class="slider-header"><span class="slider-name">RF POWER</span><span class="slider-val" id="v-rfpower">--</span></div>
+      <input type="range" min="0" max="1" step="0.01" id="sl-rfpower"
+        oninput="setLevel('RFPOWER',this.value);document.getElementById('v-rfpower').textContent=Math.round(this.value*100)+'%'">
+    </div>
+    <div class="slider-block">
+      <div class="slider-header"><span class="slider-name">AF GAIN</span><span class="slider-val" id="v-af">--</span></div>
+      <input type="range" min="0" max="1" step="0.01" id="sl-af"
+        oninput="setLevel('AF',this.value);document.getElementById('v-af').textContent=Math.round(this.value*100)+'%'">
+    </div>
+    <div class="slider-block">
+      <div class="slider-header"><span class="slider-name">RF GAIN</span><span class="slider-val" id="v-rf">--</span></div>
+      <input type="range" min="0" max="1" step="0.01" id="sl-rf"
+        oninput="setLevel('RF',this.value);document.getElementById('v-rf').textContent=Math.round(this.value*100)+'%'">
+    </div>
+  </div>
+
+  <!-- DSP + Controls -->
+  <div class="card">
+    <div class="card-title">DSP / Filters</div>
+    <div class="toggle-grid">
+      <div class="tog-item">
+        <span class="tog-name">Noise Blanker</span>
+        <label class="toggle"><input type="checkbox" id="tog-nb" onchange="setFunc('NB',this.checked)"><span class="tslider"></span></label>
+      </div>
+      <div class="tog-item">
+        <span class="tog-name">Noise Reduction</span>
+        <label class="toggle"><input type="checkbox" id="tog-nr" onchange="setFunc('NR',this.checked)"><span class="tslider"></span></label>
+      </div>
+      <div class="tog-item">
+        <span class="tog-name">Auto Notch</span>
+        <label class="toggle"><input type="checkbox" id="tog-anf" onchange="setFunc('ANF',this.checked)"><span class="tslider"></span></label>
+      </div>
+      <div class="tog-item">
+        <span class="tog-name">Preamp</span>
+        <button class="preamp-btn" id="preamp-btn" onclick="cyclePreamp()">IPO</button>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin-top:14px">AGC</div>
+    <div class="agc-row">
+      <button class="agc-btn" data-agc="0" onclick="setAGC(0)">OFF</button>
+      <button class="agc-btn" data-agc="3" onclick="setAGC(3)">SLOW</button>
+      <button class="agc-btn" data-agc="5" onclick="setAGC(5)">MED</button>
+      <button class="agc-btn" data-agc="2" onclick="setAGC(2)">FAST</button>
+      <button class="agc-btn" data-agc="6" onclick="setAGC(6)">AUTO</button>
+    </div>
+
+
+  </div>
+
+</div>
+
+<script>
+let currentStep = 1000;
+let currentFreqHz = 0;
+
+function updateClocks() {
+  const now = new Date();
+  document.getElementById('clock-local').textContent = now.toTimeString().slice(0,8);
+  document.getElementById('clock-utc').textContent = now.toUTCString().slice(17,25);
+}
+setInterval(updateClocks, 1000);
+updateClocks();
+
+document.querySelectorAll('.step-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentStep = parseInt(btn.dataset.step);
+  });
+});
+
+function stepFreq(multiplier) {
+  if (!currentFreqHz) return;
+  setBand(Math.round(currentFreqHz + currentStep * multiplier));
+}
+
+function freqToMHz(hz) { return (hz / 1e6).toFixed(6); }
+
+function updateBandHighlight(freq) {
+  const bands = {1800000:'160m',3573000:'80m',7074000:'40m',10136000:'30m',
+    14074000:'20m',18100000:'17m',21074000:'15m',24915000:'12m',28074000:'10m',50313000:'6m'};
+  document.querySelectorAll('.band-btn').forEach(b => b.classList.remove('active'));
+  for (const [bf, label] of Object.entries(bands)) {
+    if (Math.abs(freq - parseInt(bf)) < 500000) {
+      document.querySelectorAll('.band-btn').forEach(b => {
+        if (b.textContent === label) b.classList.add('active');
+      });
+      break;
+    }
+  }
+}
+
+const METER_VALUES = {power: 32, swr: 1, alc: 4, comp: 2};
+async function selectMeter(name) {
+  ['signal','power','swr','alc'].forEach(m =>
+    document.getElementById('meter-'+m).style.display = m === name ? 'block' : 'none');
+  document.querySelectorAll('.msel-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.meter === name));
+  if (name !== 'signal') {
+    await fetch('/api/level', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({level: 'METER', value: METER_VALUES[name] ?? 1})
+    });
+  }
+}
+
+async function setAGC(val) {
+  document.querySelectorAll('.agc-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.agc) === val));
+  await fetch('/api/level', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({level: 'AGC', value: val})
+  });
+}
+
+async function cyclePreamp() {
+  const res = await fetch('/api/preamp/cycle', {method: 'POST'});
+  const data = await res.json();
+  const btn = document.getElementById('preamp-btn');
+  btn.textContent = data.label;
+  btn.classList.toggle('amp', data.label !== 'IPO');
+}
+
+function updateUI(state) {
+  if (state.freq) {
+    currentFreqHz = state.freq;
+    document.getElementById('vfoa-freq').innerHTML = freqToMHz(state.freq) + '<span class="unit">MHz</span>';
+    updateBandHighlight(state.freq);
+  }
+  if (state.freqb) {
+    document.getElementById('vfob-freq').innerHTML = freqToMHz(state.freqb) + '<span class="unit">MHz</span>';
+  }
+  if (state.mode) {
+    document.getElementById('vfoa-mode').textContent = state.mode;
+    document.querySelectorAll('.mode-btn').forEach(b =>
+      b.classList.toggle('active',
+        b.textContent === state.mode ||
+        (b.textContent === 'FT8' && state.mode === 'PKTUSB')));
+  }
+  if (state.modeb) document.getElementById('vfob-mode').textContent = state.modeb;
+
+  if (state.strength !== null && state.strength !== undefined) {
+    const pct = Math.min(100, Math.max(0, (state.strength + 54) / 114 * 100));
+    document.getElementById('fill-signal').style.width = pct + '%';
+    const s = state.strength <= 0
+      ? 'S' + Math.max(0, Math.round((state.strength + 54) / 6))
+      : 'S9+' + Math.round(state.strength);
+    document.getElementById('val-signal').textContent = s;
+  }
+  if (state.rfpower !== null && state.rfpower !== undefined) {
+    const w = Math.round(state.rfpower * 100);
+    document.getElementById('fill-power').style.width = state.rfpower * 100 + '%';
+    document.getElementById('val-power').textContent = w + 'W';
+    if (document.activeElement !== document.getElementById('sl-rfpower')) {
+      document.getElementById('sl-rfpower').value = state.rfpower;
+      document.getElementById('v-rfpower').textContent = w + '%';
+    }
+  }
+  if (state.swr !== null && state.swr !== undefined) {
+    const pct = Math.min(100, Math.max(0, (state.swr - 1) / 4 * 100));
+    document.getElementById('fill-swr').style.width = pct + '%';
+    document.getElementById('val-swr').textContent = state.swr.toFixed(1);
+  }
+  if (state.af !== null && document.activeElement !== document.getElementById('sl-af')) {
+    document.getElementById('sl-af').value = state.af;
+    document.getElementById('v-af').textContent = Math.round(state.af * 100) + '%';
+  }
+  if (state.rf !== null && document.activeElement !== document.getElementById('sl-rf')) {
+    document.getElementById('sl-rf').value = state.rf;
+    document.getElementById('v-rf').textContent = Math.round(state.rf * 100) + '%';
+  }
+  if (state.nb !== null) document.getElementById('tog-nb').checked = state.nb;
+  if (state.nr !== null) document.getElementById('tog-nr').checked = state.nr;
+  if (state.anf !== null) document.getElementById('tog-anf').checked = state.anf;
+  if (state.preamp !== undefined) {
+    const labels = {0:'IPO', 10:'AMP1', 20:'AMP2'};
+    const lbl = labels[state.preamp] || 'IPO';
+    const btn = document.getElementById('preamp-btn');
+    btn.textContent = lbl;
+    btn.classList.toggle('amp', lbl !== 'IPO');
+  }
+
+  document.getElementById('dot-rig').classList.add('on');
+}
+
+function connectWS() {
+  const ws = new WebSocket('ws://localhost:8000/ws');
+  ws.onopen = () => document.getElementById('dot-ws').classList.add('on');
+  ws.onclose = () => {
+    document.getElementById('dot-ws').classList.remove('on');
+    document.getElementById('dot-rig').classList.remove('on');
+    setTimeout(connectWS, 2000);
+  };
+  ws.onmessage = e => updateUI(JSON.parse(e.data));
+}
+connectWS();
+
+async function setBand(freq) {
+  await fetch('/api/freq', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({freq: Math.round(freq)})
+  });
+}
+
+async function setFreqManual() {
+  const val = parseFloat(document.getElementById('freq-input').value);
+  if (isNaN(val)) return;
+  const hz = val > 1000 ? Math.round(val) : Math.round(val * 1e6);
+  await setBand(hz);
+}
+
+async function setMode(mode) {
+  await fetch('/api/mode', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({mode, bandwidth: 0})
+  });
+}
+
+async function setLevel(level, value) {
+  await fetch('/api/level', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({level, value: parseFloat(value)})
+  });
+}
+
+async function setFunc(func, value) {
+  await fetch('/api/func', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({func, value})
+  });
+}
+</script>
+</body>
+</html>
