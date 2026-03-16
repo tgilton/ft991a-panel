@@ -18,7 +18,7 @@
 - RIG dot green = panel connected to rigctld and rig responding
 - VFO display matches rig front panel
 - Band activity panel populates within about 10 seconds
-- Solar data (SFI and Kp) appears in top right of band panel
+- Solar data (SFI and Kp) appears in top right of band activity panel
 
 ## If rigctld did not start automatically
 
