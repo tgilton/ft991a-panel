@@ -131,14 +131,7 @@ FT8 BAND ACTIVITY FROM DM13 (last 15 minutes):
 async def get_advice(rig_state: dict, prop_state: dict, user_question: Optional[str] = None) -> str:
     """
     Send current state to Claude and return its band recommendation.
-
-    Args:
-        rig_state: From rig.get_rig_state()
-        prop_state: From propagation.get_propagation_state()
-        user_question: Optional specific question from the user
-
-    Returns:
-        Claude's response as a string
+    Non-streaming version — used for scheduled/background advice.
     """
     context = format_context(rig_state, prop_state, user_question)
 
@@ -152,3 +145,36 @@ async def get_advice(rig_state: dict, prop_state: dict, user_question: Optional[
     )
 
     return message.content[0].text
+
+
+def stream_advice(rig_state: dict, prop_state: dict,
+                  conversation_history: list,
+                  user_question: Optional[str] = None):
+    """
+    Stream Claude's response token by token.
+    Uses the synchronous streaming API — FastAPI runs this in a thread.
+
+    Args:
+        rig_state: From rig.get_rig_state()
+        prop_state: From propagation.get_propagation_state()
+        conversation_history: List of prior message dicts for multi-turn context
+        user_question: The user's question
+
+    Yields:
+        Text chunks as they arrive from Claude
+    """
+    context = format_context(rig_state, prop_state, user_question)
+
+    # Build message list — prior conversation + new context message
+    messages = conversation_history + [
+        {"role": "user", "content": context}
+    ]
+
+    with client.messages.stream(
+        model=MODEL,
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=messages,
+    ) as stream:
+        for text in stream.text_stream:
+            yield text

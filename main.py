@@ -29,6 +29,7 @@ To add a new rig control:
 import asyncio
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import rig
@@ -97,15 +98,56 @@ def preamp_cycle():
 
 class AdvisorRequest(BaseModel):
     question: str = ""
+    clear_history: bool = False
 
-@app.post("/api/advisor")
-async def get_advice(req: AdvisorRequest):
-    """Send current rig state and propagation data to Claude for band advice."""
+# Conversation history stored server-side per session
+# Simple single-user implementation — extend to dict keyed by session ID for multi-user
+conversation_history: list = []
+
+@app.post("/api/advisor/stream")
+async def stream_advice(req: AdvisorRequest):
+    """
+    Stream Claude's response using Server-Sent Events.
+    Maintains conversation history for multi-turn context.
+    """
+    global conversation_history
+
+    if req.clear_history:
+        conversation_history = []
+
     rig_state = rig.get_rig_state()
     prop_state = await propagation.get_propagation_state()
     question = req.question.strip() or None
-    response = await advisor.get_advice(rig_state, prop_state, question)
-    return {"advice": response}
+
+    # Capture the full response to append to history after streaming
+    full_response = []
+
+    def generate():
+        for chunk in advisor.stream_advice(
+            rig_state, prop_state, conversation_history, question
+        ):
+            full_response.append(chunk)
+            # Server-Sent Events format
+            yield "data: " + chunk + "\n\n"
+        # Signal end of stream
+        yield "data: [DONE]\n\n"
+
+        # Append this exchange to conversation history
+        context = advisor.format_context(rig_state, prop_state, question)
+        conversation_history.append({"role": "user", "content": context})
+        conversation_history.append({"role": "assistant", "content": "".join(full_response)})
+        # Keep history to last 6 exchanges (3 turns) to manage token costs
+        if len(conversation_history) > 6:
+            conversation_history[:] = conversation_history[-6:]
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+@app.post("/api/advisor/clear")
+async def clear_history():
+    """Clear conversation history to start a fresh context."""
+    global conversation_history
+    conversation_history = []
+    return {"ok": True}
 
 @app.get("/api/propagation")
 async def get_propagation():
