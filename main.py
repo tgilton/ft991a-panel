@@ -4,6 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import rig
+import propagation
 
 app = FastAPI()
 
@@ -48,6 +49,10 @@ def set_func(req: FuncRequest):
     ok = rig.set_func(req.func, req.value)
     return {"ok": ok}
 
+@app.get("/api/propagation")
+async def get_propagation():
+    return await propagation.get_propagation_state()
+
 @app.post("/api/preamp/cycle")
 def preamp_cycle():
     val = rig.cycle_preamp()
@@ -84,9 +89,33 @@ async def poll_rig():
             print(f"Poll error: {e}")
         await asyncio.sleep(1.0)
 
+async def push_propagation():
+    """Fetch and push propagation data to all connected clients."""
+    try:
+        state = await propagation.get_propagation_state()
+        if clients:
+            msg = json.dumps({"type": "propagation", "data": state})
+            dead = set()
+            for ws in clients:
+                try:
+                    await ws.send_text(msg)
+                except Exception:
+                    dead.add(ws)
+            clients.difference_update(dead)
+    except Exception as e:
+        print(f"Propagation poll error: {e}")
+
+async def poll_propagation():
+    """Refresh propagation data every 3 minutes and push to clients."""
+    await asyncio.sleep(3.0)  # let rig poll start first
+    while True:
+        await push_propagation()
+        await asyncio.sleep(180.0)
+
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(poll_rig())
+    asyncio.create_task(poll_propagation())
 
 # --- Serve static UI ---
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

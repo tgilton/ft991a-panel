@@ -279,6 +279,23 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
 
 </div>
 
+<!-- Band Activity Panel -->
+<div style="max-width:1100px;margin-top:12px">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">Band Activity — FT8 spots from DM13</div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <span style="font-size:11px;color:#555">SFI: <span id="solar-sfi" style="color:#aaa">--</span></span>
+        <span style="font-size:11px;color:#555">Kp: <span id="solar-kp" style="color:#aaa">--</span></span>
+        <span style="font-size:11px;color:#444" id="solar-updated">--</span>
+      </div>
+    </div>
+    <div id="band-activity-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+      <!-- populated by JS -->
+    </div>
+  </div>
+</div>
+
 <script>
 let currentStep = 1000;
 let currentFreqHz = 0;
@@ -413,6 +430,66 @@ function updateUI(state) {
   document.getElementById('dot-rig').classList.add('on');
 }
 
+const ACTIVITY_COLORS = {
+  high:     {bar: '#00e5a0', bg: '#003d2a', border: '#00e5a0', text: '#00e5a0'},
+  moderate: {bar: '#ffcc00', bg: '#2a2000', border: '#ffcc00', text: '#ffcc00'},
+  low:      {bar: '#ff8c00', bg: '#2a1500', border: '#ff8c00', text: '#ff8c00'},
+  dead:     {bar: '#333',    bg: '#1a1a1a', border: '#2a2a2a', text: '#444'},
+  unknown:  {bar: '#333',    bg: '#1a1a1a', border: '#2a2a2a', text: '#444'},
+};
+
+function updatePropagation(data) {
+  if (data.solar) {
+    document.getElementById('solar-sfi').textContent = data.solar.sfi ?? '--';
+    const kp = data.solar.kp;
+    const kpEl = document.getElementById('solar-kp');
+    kpEl.textContent = kp != null ? kp.toFixed(1) : '--';
+    kpEl.style.color = kp == null ? '#aaa' : kp <= 2 ? '#00e5a0' : kp <= 4 ? '#ffcc00' : '#ff4444';
+    document.getElementById('solar-updated').textContent = data.solar.updated ?? '';
+  }
+  if (!data.bands) return;
+  const grid = document.getElementById('band-activity-grid');
+  grid.innerHTML = '';
+  const bands = ['160m','80m','40m','30m','20m','17m','15m','12m','10m','6m'];
+  for (const band of bands) {
+    const b = data.bands[band] || {count:0, avg_snr:null, dxcc:[], activity:'unknown'};
+    const c = ACTIVITY_COLORS[b.activity] || ACTIVITY_COLORS.unknown;
+    const barPct = Math.min(100, Math.max(0, (b.count / 50) * 100));
+    const snrStr = b.avg_snr != null ? `${b.avg_snr}dB` : '--';
+    const dxccStr = b.dxcc.length ? b.dxcc.join(' ') : 'no spots';
+    const card = document.createElement('div');
+    card.style.cssText = `background:${c.bg};border:1px solid ${c.border};border-radius:8px;padding:10px;cursor:pointer`;
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:14px;font-weight:500;color:${c.text}">${band}</span>
+        <span style="font-size:11px;color:#666">${b.count} spots</span>
+      </div>
+      <div style="height:4px;background:#1a1a1a;border-radius:2px;margin-bottom:6px;overflow:hidden">
+        <div style="height:100%;width:${barPct}%;background:${c.bar};border-radius:2px;transition:width 0.5s"></div>
+      </div>
+      <div style="font-size:10px;color:#555;margin-bottom:3px">SNR avg: <span style="color:#888">${snrStr}</span></div>
+      <div style="font-size:10px;color:#555;line-height:1.4">${dxccStr}</div>
+    `;
+    card.onclick = () => {
+      const freqs = {'160m':1800000,'80m':3573000,'40m':7074000,'30m':10136000,
+        '20m':14074000,'17m':18100000,'15m':21074000,'12m':24915000,'10m':28074000,'6m':50313000};
+      if (freqs[band]) setBand(freqs[band]);
+    };
+    grid.appendChild(card);
+  }
+}
+
+async function loadPropagation() {
+  try {
+    const res = await fetch('/api/propagation');
+    const data = await res.json();
+    updatePropagation(data);
+  } catch(e) {
+    console.log('Propagation load error:', e);
+  }
+}
+loadPropagation();
+
 function connectWS() {
   const ws = new WebSocket('ws://localhost:8000/ws');
   ws.onopen = () => document.getElementById('dot-ws').classList.add('on');
@@ -421,7 +498,14 @@ function connectWS() {
     document.getElementById('dot-rig').classList.remove('on');
     setTimeout(connectWS, 2000);
   };
-  ws.onmessage = e => updateUI(JSON.parse(e.data));
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'propagation') {
+      updatePropagation(msg.data);
+    } else {
+      updateUI(msg);
+    }
+  };
 }
 connectWS();
 
