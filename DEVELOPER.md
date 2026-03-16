@@ -41,7 +41,7 @@ For a custom endpoint (e.g. a multi-step cycle):
 
 ### Step 3 — Add the UI control to static/index.html
 
-Add a slider in the appropriate card:
+Add a slider in the appropriate card section:
 
     <div class="slider-block">
       <div class="slider-header">
@@ -64,12 +64,18 @@ Add state update in the updateUI(state) function in the script section:
 ## Hamlib Level vs Function
 
 Levels (use l/L commands, float values):
-  RFPOWER, AF, RF, SQL, AGC, METER, PREAMP, NOTCHF, COMP, SWR, STRENGTH
+  PREAMP, ATT, AF, RF, SQL, RFPOWER, MICGAIN, NOTCHF, COMP,
+  AGC, METER, SWR, ALC, STRENGTH, NB, MONITOR_GAIN, BAND_SELECT
 
 Functions (use u/U commands, 0 or 1):
-  NB, NR, ANF, TUNER, VOX, COMP, LOCK, RIT, XIT
+  NB, COMP, VOX, TONE, TSQL, FBKIN, ANF, NR, APF, MON, MN, LOCK, RIT, TUNER, XIT, CSQL
 
 Use setLevel() in JS for levels, setFunc() for functions.
+
+Known value mappings for FT-991A:
+  AGC: 0=OFF, 2=FAST, 3=SLOW, 5=MED, 6=AUTO
+  METER: 1=SWR, 2=COMP, 4=ALC, 8=IDD, 32=PO(power), 64=VDD
+  PREAMP: 0=IPO, 10=AMP1, 20=AMP2
 
 ## Controls NOT available via Hamlib on FT-991A
 
@@ -78,6 +84,17 @@ These require direct CAT serial access which conflicts with rigctld exclusive se
 - NAR/WIDE toggle (NA command)
 - Contour filter settings
 - Most MEN menu items
+
+## Adding a New Claude Tool (for Auto-QSY style features)
+
+Claude can be given tools it can call during a conversation. The existing qsy_to_band tool in advisor.py is an example. To add a new tool:
+
+1. Define the tool schema in advisor.py following the QSY_TOOL pattern
+2. Add it to the tools list in stream_advice_with_tools()
+3. Handle the tool_use block in the event loop
+4. Yield a new event type tuple e.g. ('filter_change', block.input)
+5. Handle the new event type in the generate() function in main.py
+6. Execute the rig command and optionally notify the UI
 
 ## WebSocket Message Format
 
@@ -89,8 +106,21 @@ Propagation data (every 3 minutes) — wrapped with type tag:
 
 The browser distinguishes them in ws.onmessage by checking msg.type.
 
+## Server-Sent Events for AI Streaming
+
+The /api/advisor/stream endpoint returns a text/event-stream response.
+Each line is formatted as: data: <content>
+
+Special tokens:
+  data: [DONE]          — stream complete, move response to history
+  data: [QSY]{...json}  — auto-QSY was executed, show notification
+
+The browser reads the stream with a ReadableStream reader, accumulating
+chunks until [DONE] is received, then renders the full response.
+
 ## Adding a New External Data Source
 
-1. Add fetch functions to propagation.py following the same async/cache pattern
+1. Add async fetch functions to propagation.py following the cache pattern
 2. Add the new data to the get_propagation_state() return dict
-3. Update updatePropagation() in index.html to display it
+3. The data will automatically be included in Claude advisor context
+4. Update updatePropagation() in index.html to display it in the UI

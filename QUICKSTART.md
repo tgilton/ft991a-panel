@@ -18,6 +18,7 @@
 - RIG dot green = panel connected to rigctld and rig responding
 - VFO display matches rig front panel
 - Band activity panel populates within about 10 seconds
+- Solar data (SFI and Kp) appears in top right of band panel
 
 ## If rigctld did not start automatically
 
@@ -35,6 +36,29 @@ Or start manually (rig must be powered on and USB connected first):
 - SFI above 120 = good HF conditions, below 80 = poor
 - Kp green (2 or less) = quiet, yellow (3-4) = unsettled, red (5 or more) = geomagnetic storm
 - Data refreshes every 3 minutes automatically
+- If all cards show zero, PSKReporter may be down — restart uvicorn to clear cache
+
+## AI Band Advisor
+
+The advisor panel is at the bottom of the page. Type any question and press Enter or click Ask Claude.
+
+Good questions to ask:
+  "What is the best band for DX right now?"
+  "Where should I look for JA stations?"
+  "How long will 20m stay open to Europe?"
+  "What is causing the poor conditions on 15m?"
+  "Find me some rare DX in the current spot data"
+
+Multi-turn conversation: ask follow-up questions without clicking New Conversation.
+Claude remembers the context of the current session.
+Click New Conversation to start fresh with a clean context.
+
+Auto-QSY: check the Auto-QSY box and ask Claude to change bands.
+Use action language: "QSY me to the best band" or "Move me to 40m FT8".
+A green bar at the bottom confirms what frequency Claude tuned to and why.
+The rig will actually change frequency when auto-QSY executes.
+
+API cost: approximately $0.002 to $0.004 per question (about 300 questions per dollar).
 
 ## Common controls
 
