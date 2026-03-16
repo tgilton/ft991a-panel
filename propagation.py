@@ -157,8 +157,7 @@ async def fetch_pskreporter() -> dict:
         return summary
 
     except Exception as e:
-        traceback.print_exc()
-        print(f"PSKReporter fetch error: {e}")
+        print(f"PSKReporter unavailable: {type(e).__name__}")
         # Return last good cache, or empty structure if no cache yet
         return _pskreporter_cache or {
             b: {"count": 0, "avg_snr": None, "dxcc": [], "activity": "unknown"}

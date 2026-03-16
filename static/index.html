@@ -544,5 +544,67 @@ async function setFunc(func, value) {
   });
 }
 </script>
+<div style="max-width:1100px;margin-top:12px;margin-bottom:24px">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">AI Band Advisor</div>
+      <div style="font-size:10px;color:#444">Powered by Claude</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="advisor-input"
+        placeholder="Ask anything — e.g. 'Where should I look for JA stations?'"
+        style="flex:1;background:#141414;border:1px solid #2e2e2e;color:#ddd;
+               padding:8px 12px;border-radius:6px;font-size:13px;"
+        onkeydown="if(event.key==='Enter') askClaude()">
+      <button onclick="askClaude()" id="advisor-btn"
+        style="background:#003d2a;border:1px solid #00e5a0;color:#00e5a0;
+               padding:8px 20px;border-radius:6px;cursor:pointer;font-size:13px;
+               white-space:nowrap;transition:all 0.15s">
+        Ask Claude
+      </button>
+    </div>
+    <div id="advisor-response"
+      style="min-height:60px;font-size:13px;line-height:1.7;color:#bbb;
+             background:#141414;border:1px solid #1e1e1e;border-radius:6px;
+             padding:12px;display:none;white-space:pre-wrap">
+    </div>
+    <div id="advisor-loading"
+      style="font-size:12px;color:#444;display:none;padding:8px 0">
+      Claude is thinking...
+    </div>
+  </div>
+</div>
+
+<script>
+async function askClaude() {
+  const question = document.getElementById('advisor-input').value.trim();
+  const btn = document.getElementById('advisor-btn');
+  const loading = document.getElementById('advisor-loading');
+  const response = document.getElementById('advisor-response');
+
+  btn.style.opacity = '0.5';
+  btn.disabled = true;
+  loading.style.display = 'block';
+  response.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/advisor', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question})
+    });
+    const data = await res.json();
+    response.textContent = data.advice;
+    response.style.display = 'block';
+  } catch(e) {
+    response.textContent = 'Error contacting Claude — check that ANTHROPIC_API_KEY is set and uvicorn was restarted.';
+    response.style.display = 'block';
+  } finally {
+    btn.style.opacity = '1';
+    btn.disabled = false;
+    loading.style.display = 'none';
+  }
+}
+</script>
 </body>
 </html>

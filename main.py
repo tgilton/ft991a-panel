@@ -33,6 +33,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import rig
 import propagation
+import advisor
 
 app = FastAPI(title="FT-991A Control Panel")
 
@@ -93,6 +94,18 @@ def preamp_cycle():
     """Cycle preamp through IPO → AMP1 → AMP2 → IPO."""
     val = rig.cycle_preamp()
     return {"ok": True, "preamp": val, "label": rig.PREAMP_LABELS[val]}
+
+class AdvisorRequest(BaseModel):
+    question: str = ""
+
+@app.post("/api/advisor")
+async def get_advice(req: AdvisorRequest):
+    """Send current rig state and propagation data to Claude for band advice."""
+    rig_state = rig.get_rig_state()
+    prop_state = await propagation.get_propagation_state()
+    question = req.question.strip() or None
+    response = await advisor.get_advice(rig_state, prop_state, question)
+    return {"advice": response}
 
 @app.get("/api/propagation")
 async def get_propagation():
