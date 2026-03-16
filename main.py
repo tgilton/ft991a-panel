@@ -99,6 +99,7 @@ def preamp_cycle():
 class AdvisorRequest(BaseModel):
     question: str = ""
     clear_history: bool = False
+    auto_qsy: bool = False
 
 # Conversation history stored server-side per session
 # Simple single-user implementation — extend to dict keyed by session ID for multi-user
@@ -122,24 +123,34 @@ async def stream_advice(req: AdvisorRequest):
     # Capture the full response to append to history after streaming
     full_response = []
 
-    def generate():
-        for chunk in advisor.stream_advice(
-            rig_state, prop_state, conversation_history, question
-        ):
-            full_response.append(chunk)
-            # Server-Sent Events format
-            yield "data: " + chunk + "\n\n"
-        # Signal end of stream
-        yield "data: [DONE]\n\n"
+    auto_qsy = req.auto_qsy
 
-        # Append this exchange to conversation history
+    def generate():
+        import json as _json
+        for event_type, event_data in advisor.stream_advice_with_tools(
+            rig_state, prop_state, conversation_history, question, auto_qsy
+        ):
+            if event_type == "text":
+                full_response.append(event_data)
+                yield "data: " + event_data + "\n\n"
+            elif event_type == "qsy":
+                print("QSY event received:", event_data)
+                freq = event_data.get("frequency_hz")
+                mode = event_data.get("mode", "PKTUSB")
+                reason = event_data.get("reason", "")
+                if freq:
+                    print("Executing QSY to", freq, mode)
+                    rig.set_freq(freq)
+                    rig.set_mode(mode)
+                qsy_msg = _json.dumps({"qsy": True, "freq": freq, "mode": mode, "reason": reason})
+                yield "data: [QSY]" + qsy_msg + "\n\n"
+            elif event_type == "done":
+                yield "data: [DONE]\n\n"
         context = advisor.format_context(rig_state, prop_state, question)
         conversation_history.append({"role": "user", "content": context})
         conversation_history.append({"role": "assistant", "content": "".join(full_response)})
-        # Keep history to last 6 exchanges (3 turns) to manage token costs
         if len(conversation_history) > 6:
             conversation_history[:] = conversation_history[-6:]
-
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 @app.post("/api/advisor/clear")

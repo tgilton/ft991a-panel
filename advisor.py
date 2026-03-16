@@ -178,3 +178,88 @@ def stream_advice(rig_state: dict, prop_state: dict,
     ) as stream:
         for text in stream.text_stream:
             yield text
+
+
+# Tool definition for auto-QSY
+QSY_TOOL = {
+    "name": "qsy_to_band",
+    "description": "Command the FT-991A to change to a specific frequency and mode. Use this when you are recommending a band change and the user has auto-QSY enabled.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "frequency_hz": {
+                "type": "integer",
+                "description": "Frequency in Hz, e.g. 14074000 for 20m FT8"
+            },
+            "mode": {
+                "type": "string",
+                "description": "Mode string: USB, LSB, CW, PKTUSB (FT8), PKTLSB",
+                "enum": ["USB", "LSB", "CW", "CWR", "AM", "FM", "PKTUSB", "PKTLSB"]
+            },
+            "reason": {
+                "type": "string",
+                "description": "Brief explanation of why this band change is recommended"
+            }
+        },
+        "required": ["frequency_hz", "mode", "reason"]
+    }
+}
+
+
+def stream_advice_with_tools(rig_state: dict, prop_state: dict,
+                              conversation_history: list,
+                              user_question: Optional[str] = None,
+                              auto_qsy: bool = False):
+    """
+    Stream Claude's response with optional auto-QSY tool support.
+
+    When auto_qsy is True, Claude may call qsy_to_band to command
+    the rig directly. Yields tuples of (type, data) where type is
+    'text', 'qsy', or 'done'.
+    """
+    context = format_context(rig_state, prop_state, user_question)
+    if auto_qsy:
+        context += """
+
+Auto-QSY is ENABLED. You MUST use the qsy_to_band tool to command the rig. 
+Do not just describe what frequency to go to — actually call the tool.
+Call it with the best frequency and mode for current conditions."""
+    else:
+        context += "\n\nAuto-QSY is disabled. Do not use the qsy_to_band tool."
+
+    messages = conversation_history + [
+        {"role": "user", "content": context}
+    ]
+
+    if auto_qsy:
+        with client.messages.stream(
+            model=MODEL,
+            max_tokens=1024,
+            system=SYSTEM_PROMPT,
+            messages=messages,
+            tools=[QSY_TOOL],
+            tool_choice={"type": "auto"},
+        ) as stream:
+            for event in stream:
+                if hasattr(event, 'type'):
+                    if event.type == 'content_block_delta':
+                        if hasattr(event.delta, 'text'):
+                            yield ('text', event.delta.text)
+            final = stream.get_final_message()
+            for block in final.content:
+                if block.type == 'tool_use' and block.name == 'qsy_to_band':
+                    yield ('qsy', block.input)
+    else:
+        with client.messages.stream(
+            model=MODEL,
+            max_tokens=1024,
+            system=SYSTEM_PROMPT,
+            messages=messages,
+        ) as stream:
+            for event in stream:
+                if hasattr(event, 'type'):
+                    if event.type == 'content_block_delta':
+                        if hasattr(event.delta, 'text'):
+                            yield ('text', event.delta.text)
+
+    yield ('done', None)

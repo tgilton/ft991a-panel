@@ -271,6 +271,10 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
       <div class="card-title" style="margin-bottom:0">AI Band Advisor</div>
       <div style="display:flex;align-items:center;gap:12px">
         <span style="font-size:10px;color:#444">Powered by Claude</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:#555">
+          <input type="checkbox" id="auto-qsy-toggle" style="accent-color:#00e5a0">
+          Auto-QSY
+        </label>
         <button class="clear-btn" onclick="clearHistory()">New conversation</button>
       </div>
     </div>
@@ -282,6 +286,7 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
       <button class="advisor-btn" id="advisor-btn" onclick="askClaude()">Ask Claude</button>
     </div>
     <div id="advisor-response" style="min-height:40px;font-size:13px;line-height:1.7;color:#bbb;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:12px;display:none;white-space:pre-wrap"></div>
+    <div id="qsy-notification" style="display:none;margin-top:8px;padding:10px 14px;background:#003d2a;border:1px solid #00e5a0;border-radius:6px;font-size:12px;color:#00e5a0"></div>
   </div>
 </div>
 
@@ -503,10 +508,12 @@ function askClaude() {
   responseEl.style.display = 'block';
   responseEl.textContent = '';
   btn.disabled = true;
+  var autoQsy = document.getElementById('auto-qsy-toggle').checked;
+  document.getElementById('qsy-notification').style.display = 'none';
   fetch('/api/advisor/stream', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({question: question})
+    body: JSON.stringify({question: question, auto_qsy: autoQsy})
   }).then(function(res) {
     var reader = res.body.getReader();
     var decoder = new TextDecoder();
@@ -526,6 +533,14 @@ function askClaude() {
               renderHistory();
               responseEl.style.display = 'none';
               responseEl.textContent = '';
+            } else if (chunk.indexOf('[QSY]') === 0) {
+              try {
+                var qsyData = JSON.parse(chunk.slice(5));
+                var mhz = (qsyData.freq / 1e6).toFixed(4);
+                var notif = document.getElementById('qsy-notification');
+                notif.textContent = 'Auto-QSY: Tuned to ' + mhz + ' MHz ' + qsyData.mode + ' — ' + qsyData.reason;
+                notif.style.display = 'block';
+              } catch(e) {}
             } else {
               fullResponse += chunk;
               responseEl.textContent = fullResponse;
