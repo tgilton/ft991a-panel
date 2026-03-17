@@ -18,47 +18,60 @@
 - RIG dot green = panel connected to rigctld and rig responding
 - VFO display matches rig front panel
 - Band activity panel populates within about 10 seconds
-- Solar data (SFI and Kp) appears in top right of band activity panel
+- Solar data (SFI and Kp) appears in top right of band panel
 
 ## If rigctld did not start automatically
 
     launchctl stop com.hamlib.rigctld
     launchctl start com.hamlib.rigctld
 
-Or start manually (rig must be powered on and USB connected first):
-
-    rigctld -m 1035 -r /dev/tty.usbserial-01A3286E0 -s 9600 -P RTS -p /dev/tty.SLAB_USBtoUART -C stop_bits=2
-
 ## Band activity panel
 
 - Cards color-coded: green = high activity, yellow = moderate, orange = low, grey = dead
 - Click any band card to QSY to that band FT8 frequency
 - SFI above 120 = good HF conditions, below 80 = poor
-- Kp green (2 or less) = quiet, yellow (3-4) = unsettled, red (5 or more) = geomagnetic storm
-- Data refreshes every 3 minutes automatically
-- If all cards show zero, PSKReporter may be down — restart uvicorn to clear cache
+- Kp green (2 or less) = quiet, yellow (3-4) = unsettled, red (5 or more) = storm
+- Data refreshes every 6 minutes automatically
+- If all cards show zero, PSKReporter may be rate limiting — wait 30-60 min
+
+## Propagation alerts
+
+Yellow banner appears automatically when:
+- A band suddenly opens or closes (50+ spot change)
+- 10m or 12m lights up unexpectedly
+- Kp spikes above 4.0
+
+Each alert includes a brief Claude explanation of what happened and what to do.
+Click Dismiss to clear the banner. Alerts also appear in the AI advisor history.
+Cooldown: same condition will not re-alert for 15 minutes.
 
 ## AI Band Advisor
 
-The advisor panel is at the bottom of the page. Type any question and press Enter or click Ask Claude.
+Type any question and press Enter or click Ask Claude.
 
 Good questions to ask:
   "What is the best band for DX right now?"
   "Where should I look for JA stations?"
   "How long will 20m stay open to Europe?"
-  "What is causing the poor conditions on 15m?"
-  "Find me some rare DX in the current spot data"
+  "QSY me to the best band" (with Auto-QSY checked)
 
-Multi-turn conversation: ask follow-up questions without clicking New Conversation.
-Claude remembers the context of the current session.
-Click New Conversation to start fresh with a clean context.
+Conversation scrolls within the history box — no page scrolling needed.
+Click New Conversation to start fresh.
 
-Auto-QSY: check the Auto-QSY box and ask Claude to change bands.
-Use action language: "QSY me to the best band" or "Move me to 40m FT8".
-A green bar at the bottom confirms what frequency Claude tuned to and why.
-The rig will actually change frequency when auto-QSY executes.
+Auto-QSY: check the Auto-QSY box and use action language.
+Green bar confirms what frequency Claude tuned to and why.
+Cost: approximately $0.002 to $0.004 per question.
 
-API cost: approximately $0.002 to $0.004 per question (about 300 questions per dollar).
+## Meters
+
+RX meter (always visible):
+  S-meter showing received signal strength continuously
+
+TX meter (select with buttons):
+  PWR  = transmit power output
+  SWR  = standing wave ratio (1.0 = perfect)
+  ALC  = ALC level during transmit
+  COMP = compression level
 
 ## Common controls
 
@@ -72,21 +85,12 @@ Preamp IPO       | Best for strong signals and low noise floor
 Preamp AMP1      | Use when signals are weak
 NR toggle        | Noise reduction — helps on noisy bands
 NB toggle        | Noise blanker — helps with impulse noise
-ANF toggle       | Auto notch filter — removes carriers and heterodynes
-
-## Meter modes
-
-Button | Shows
--------|-----------------------------------------------
-SIG    | Received signal strength (S-meter), always active
-PWR    | Transmit power output
-SWR    | Standing wave ratio (1.0 = perfect match)
-ALC    | ALC level during transmit
+ANF toggle       | Auto notch filter — removes carriers
 
 ## Stopping the panel
 
 Press Ctrl+C in the Terminal window running uvicorn.
-rigctld keeps running in the background — WSJT-X continues working normally.
+rigctld keeps running — WSJT-X continues working normally.
 
 ## Restarting after a crash
 
