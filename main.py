@@ -36,6 +36,7 @@ import rig
 import propagation
 import advisor
 import monitor
+import logger
 
 app = FastAPI(title="FT-991A Control Panel")
 
@@ -120,6 +121,13 @@ async def stream_advice(req: AdvisorRequest):
     rig_state = rig.get_rig_state()
     prop_state = await propagation.get_propagation_state()
     question = req.question.strip() or None
+    if question:
+        freq = rig_state.get("freq", 0) or 0
+        mode = rig_state.get("mode", "?")
+        band_map = [(1800000,2000000,"160m"),(3500000,4000000,"80m"),(7000000,7300000,"40m"),(10100000,10150000,"30m"),(14000000,14350000,"20m"),(18068000,18168000,"17m"),(21000000,21450000,"15m"),(24890000,24990000,"12m"),(28000000,29700000,"10m"),(50000000,54000000,"6m")]
+        band = next((b for lo,hi,b in band_map if lo <= freq <= hi), "?")
+        logger.log_rig_state(freq, mode, band)
+        logger.log_question(question)
 
     # Capture the full response to append to history after streaming
     full_response = []
@@ -143,13 +151,17 @@ async def stream_advice(req: AdvisorRequest):
                     print("Executing QSY to", freq, mode)
                     rig.set_freq(freq)
                     rig.set_mode(mode)
+                    logger.log_qsy(freq, mode, reason)
                 qsy_msg = _json.dumps({"qsy": True, "freq": freq, "mode": mode, "reason": reason})
                 yield "data: [QSY]" + qsy_msg + "\n\n"
             elif event_type == "done":
                 yield "data: [DONE]\n\n"
+        full_text = "".join(full_response)
+        if full_text:
+            logger.log_response(full_text)
         context = advisor.format_context(rig_state, prop_state, question)
         conversation_history.append({"role": "user", "content": context})
-        conversation_history.append({"role": "assistant", "content": "".join(full_response)})
+        conversation_history.append({"role": "assistant", "content": full_text})
         if len(conversation_history) > 6:
             conversation_history[:] = conversation_history[-6:]
     return StreamingResponse(generate(), media_type="text/event-stream")
@@ -160,6 +172,11 @@ async def clear_history():
     global conversation_history
     conversation_history = []
     return {"ok": True}
+
+@app.get("/api/log")
+def get_log_path():
+    """Return the path to the current session log file."""
+    return {"path": logger.get_log_path()}
 
 @app.get("/api/propagation")
 async def get_propagation():
@@ -248,6 +265,7 @@ async def poll_propagation():
                     if len(alerts) > 1:
                         others = [a["message"] for a in alerts if a is not primary]
                         explanation += " Also: " + "; ".join(others) + "."
+                    logger.log_alert(primary, explanation)
                     await broadcast(json.dumps({
                         "type": "alert",
                         "alert": primary,
@@ -264,6 +282,7 @@ async def poll_propagation():
 @app.on_event("startup")
 async def startup():
     """Launch background polling tasks when the server starts."""
+    logger.init()
     asyncio.create_task(poll_rig())
     asyncio.create_task(poll_propagation())
 
