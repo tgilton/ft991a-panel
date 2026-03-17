@@ -233,15 +233,24 @@ async def poll_propagation():
             bands = state.get("bands", {})
             kp = state.get("solar", {}).get("kp")
             alerts = monitor.detect_changes(bands, kp)
-            for alert in alerts:
+            if alerts:
                 try:
-                    print("Alert detected:", alert.get("message", ""))
+                    # Use the highest priority alert for the banner
+                    # Priority: highband > opening > kp_spike > closing
+                    priority = {"highband": 4, "opening": 3, "kp_spike": 2, "closing": 1}
+                    primary = sorted(alerts, key=lambda a: priority.get(a["type"], 0), reverse=True)[0]
+                    print("Alert detected:", primary.get("message", ""))
+                    # Get explanation for primary alert
                     explanation = await asyncio.get_event_loop().run_in_executor(
-                        None, monitor.explain_alert, alert, state
+                        None, monitor.explain_alert, primary, state
                     )
+                    # If multiple alerts, append brief summaries of others
+                    if len(alerts) > 1:
+                        others = [a["message"] for a in alerts if a is not primary]
+                        explanation += " Also: " + "; ".join(others) + "."
                     await broadcast(json.dumps({
                         "type": "alert",
-                        "alert": alert,
+                        "alert": primary,
                         "explanation": explanation
                     }))
                 except Exception as e:
