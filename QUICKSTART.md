@@ -27,7 +27,7 @@
 
 Or start manually (rig must be powered on and USB connected first):
 
-    rigctld -m 1035 -r /dev/tty.SLAB_USBtoUART4 -s 9600 -P RTS -p /dev/tty.SLAB_USBtoUART -C stop_bits=2
+    rigctld -m 1035 -r /dev/tty.usbserial-01A3286E0 -s 9600 -P RTS -p /dev/tty.SLAB_USBtoUART -C stop_bits=2
 
 ## Band activity panel
 

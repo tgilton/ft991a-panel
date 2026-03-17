@@ -31,7 +31,7 @@ A web-based virtual front panel and AI-assisted band advisor for the Yaesu FT-99
 
 ### 2. Start rigctld
 
-    rigctld -m 1035 -r /dev/tty.SLAB_USBtoUART4 -s 9600 -P RTS -p /dev/tty.SLAB_USBtoUART -C stop_bits=2
+    rigctld -m 1035 -r /dev/tty.usbserial-01A3286E0 -s 9600 -P RTS -p /dev/tty.SLAB_USBtoUART -C stop_bits=2
 
 To start rigctld automatically at login, install the included launchd plist:
 

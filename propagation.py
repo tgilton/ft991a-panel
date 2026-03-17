@@ -57,7 +57,7 @@ _pskreporter_cache: dict = {}
 _solar_cache: dict = {}
 _last_psk_fetch: float = 0.0
 _last_solar_fetch: float = 0.0
-PSK_TTL = 180     # seconds between PSKReporter fetches
+PSK_TTL = 300     # seconds between PSKReporter fetches (5 min minimum)
 SOLAR_TTL = 900   # seconds between NOAA fetches
 
 

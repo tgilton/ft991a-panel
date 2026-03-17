@@ -35,6 +35,7 @@ from pydantic import BaseModel
 import rig
 import propagation
 import advisor
+import monitor
 
 app = FastAPI(title="FT-991A Control Panel")
 
@@ -218,26 +219,37 @@ async def poll_rig():
         await asyncio.sleep(1.0)
 
 
-async def push_propagation():
-    """Fetch fresh propagation data and push to all connected clients."""
-    try:
-        state = await propagation.get_propagation_state()
-        # Wrap with type tag so browser can distinguish from rig state
-        await broadcast(json.dumps({"type": "propagation", "data": state}))
-    except Exception as e:
-        print(f"Propagation poll error: {e}")
-
 
 async def poll_propagation():
     """
-    Background task: refresh propagation data every 3 minutes.
-    PSKReporter asks clients not to query more often than every 5 minutes,
-    but 3 minutes works reliably in practice for the senderGrid query.
+    Background task: refresh propagation data every 3 minutes,
+    push to clients, and check for significant propagation changes.
     """
-    await asyncio.sleep(3.0)  # let rig poll establish first
+    await asyncio.sleep(3.0)
     while True:
-        await push_propagation()
+        try:
+            state = await propagation.get_propagation_state()
+            await broadcast(json.dumps({"type": "propagation", "data": state}))
+            bands = state.get("bands", {})
+            kp = state.get("solar", {}).get("kp")
+            alerts = monitor.detect_changes(bands, kp)
+            for alert in alerts:
+                try:
+                    print("Alert detected:", alert.get("message", ""))
+                    explanation = await asyncio.get_event_loop().run_in_executor(
+                        None, monitor.explain_alert, alert, state
+                    )
+                    await broadcast(json.dumps({
+                        "type": "alert",
+                        "alert": alert,
+                        "explanation": explanation
+                    }))
+                except Exception as e:
+                    print("Alert error:", e)
+        except Exception as e:
+            print("Propagation poll error:", e)
         await asyncio.sleep(180.0)
+
 
 
 @app.on_event("startup")

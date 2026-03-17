@@ -566,6 +566,60 @@ function clearHistory() {
   document.getElementById('advisor-input').value = '';
 }
 
+var ALERT_ICONS = {
+  opening: 'Band opening',
+  closing: 'Band closing',
+  highband: 'High band alert',
+  kp_spike: 'Geomagnetic alert'
+};
+
+function showAlert(alert, explanation) {
+  var banner = document.getElementById('alert-banner');
+  var title = document.getElementById('alert-title');
+  var body = document.getElementById('alert-body');
+  var typeLabel = ALERT_ICONS[alert.type] || 'Propagation alert';
+  title.textContent = typeLabel + ' — ' + alert.message;
+  body.textContent = explanation;
+  banner.style.display = 'block';
+  // Add to conversation display so it appears in advisor history context
+  conversationDisplay.push({
+    role: 'assistant',
+    content: '[AUTO-ALERT] ' + alert.message + ': ' + explanation
+  });
+  renderHistory();
+}
+
+function dismissAlert() {
+  document.getElementById('alert-banner').style.display = 'none';
+}
+
+var ALERT_ICONS = {
+  opening: 'Band opening',
+  closing: 'Band closing',
+  highband: 'High band alert',
+  kp_spike: 'Geomagnetic alert'
+};
+
+function showAlert(alert, explanation) {
+  var banner = document.getElementById('alert-banner');
+  var title = document.getElementById('alert-title');
+  var body = document.getElementById('alert-body');
+  var typeLabel = ALERT_ICONS[alert.type] || 'Propagation alert';
+  title.textContent = typeLabel + ' — ' + alert.message;
+  body.textContent = explanation;
+  banner.style.display = 'block';
+  // Add to conversation display so it appears in advisor history context
+  conversationDisplay.push({
+    role: 'assistant',
+    content: '[AUTO-ALERT] ' + alert.message + ': ' + explanation
+  });
+  renderHistory();
+}
+
+function dismissAlert() {
+  document.getElementById('alert-banner').style.display = 'none';
+}
+
 function connectWS() {
   var ws = new WebSocket('ws://localhost:8000/ws');
   ws.onopen = function() { document.getElementById('dot-ws').classList.add('on'); };
@@ -578,6 +632,8 @@ function connectWS() {
     var msg = JSON.parse(e.data);
     if (msg.type === 'propagation') {
       updatePropagation(msg.data);
+    } else if (msg.type === 'alert') {
+      showAlert(msg.alert, msg.explanation);
     } else {
       updateUI(msg);
     }
