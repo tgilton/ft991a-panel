@@ -95,6 +95,10 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
 .turn-label { font-size: 11px; color: #444; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
 .turn-content { font-size: 13px; line-height: 1.7; background: #141414; border: 1px solid #1e1e1e; border-radius: 6px; padding: 10px; white-space: pre-wrap; margin-bottom: 10px; }
 .turn-content.user { color: #888; }
+.turn-content.assistant strong { color: #e0e0e0; font-weight: 500; }
+.turn-content.assistant em { color: #aaa; font-style: italic; }
+.turn-content.assistant p { margin-bottom: 8px; }
+.turn-content.assistant p:last-child { margin-bottom: 0; }
 .turn-content.assistant { color: #bbb; }
 </style>
 </head>
@@ -115,6 +119,16 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
   <div class="status-dots">
     <div class="dot" id="dot-ws"></div><span class="dot-label">WS</span>
     <div class="dot" id="dot-rig"></div><span class="dot-label">RIG</span>
+  </div>
+</div>
+
+<div id="alert-banner" style="display:none;max-width:1100px;margin-bottom:12px;padding:14px 18px;background:#1a1200;border:1px solid #ffcc00;border-radius:10px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+    <div style="flex:1">
+      <div style="font-size:11px;color:#ffcc00;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px" id="alert-title">Alert</div>
+      <div style="font-size:13px;color:#ddd;line-height:1.6" id="alert-body"></div>
+    </div>
+    <button onclick="dismissAlert()" style="background:none;border:1px solid #444;color:#666;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;flex-shrink:0">Dismiss</button>
   </div>
 </div>
 
@@ -177,19 +191,21 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
       <button class="mode-btn" onclick="setMode('PKTUSB')">FT8</button>
       <button class="mode-btn" onclick="setMode('PKTLSB')">FT8-L</button>
     </div>
-    <div class="card-title">Meters</div>
-    <div class="meter-select-row">
-      <button class="msel-btn active" data-meter="signal" onclick="selectMeter('signal')">SIG</button>
-      <button class="msel-btn" data-meter="power" onclick="selectMeter('power')">PWR</button>
-      <button class="msel-btn" data-meter="swr" onclick="selectMeter('swr')">SWR</button>
-      <button class="msel-btn" data-meter="alc" onclick="selectMeter('alc')">ALC</button>
-    </div>
-    <div class="meter-block" id="meter-signal">
+    <div class="card-title">RX Meter</div>
+    <div class="meter-block">
       <div class="meter-header"><span class="meter-name">SIGNAL STRENGTH</span><span class="meter-val" id="val-signal">S0</span></div>
       <div class="meter-bar"><div class="meter-fill signal" id="fill-signal" style="width:0%"></div></div>
       <div class="meter-tick-row"><span class="meter-tick">S1</span><span class="meter-tick">S3</span><span class="meter-tick">S5</span><span class="meter-tick">S7</span><span class="meter-tick">S9</span><span class="meter-tick">+20</span><span class="meter-tick">+40</span></div>
     </div>
-    <div class="meter-block" id="meter-power" style="display:none">
+
+    <div class="card-title" style="margin-top:14px">TX Meter</div>
+    <div class="meter-select-row">
+      <button class="msel-btn active" data-meter="power" onclick="selectMeter('power')">PWR</button>
+      <button class="msel-btn" data-meter="swr" onclick="selectMeter('swr')">SWR</button>
+      <button class="msel-btn" data-meter="alc" onclick="selectMeter('alc')">ALC</button>
+      <button class="msel-btn" data-meter="comp" onclick="selectMeter('comp')">COMP</button>
+    </div>
+    <div class="meter-block" id="meter-power">
       <div class="meter-header"><span class="meter-name">TX POWER</span><span class="meter-val" id="val-power">0W</span></div>
       <div class="meter-bar"><div class="meter-fill power" id="fill-power" style="width:0%"></div></div>
       <div class="meter-tick-row"><span class="meter-tick">0</span><span class="meter-tick">25W</span><span class="meter-tick">50W</span><span class="meter-tick">75W</span><span class="meter-tick">100W</span></div>
@@ -202,6 +218,12 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
     <div class="meter-block" id="meter-alc" style="display:none">
       <div class="meter-header"><span class="meter-name">ALC</span><span class="meter-val" id="val-alc">0</span></div>
       <div class="meter-bar"><div class="meter-fill alc" id="fill-alc" style="width:0%"></div></div>
+      <div class="meter-tick-row"><span class="meter-tick">0</span><span class="meter-tick">25</span><span class="meter-tick">50</span><span class="meter-tick">75</span><span class="meter-tick">100</span></div>
+    </div>
+    <div class="meter-block" id="meter-comp" style="display:none">
+      <div class="meter-header"><span class="meter-name">COMP</span><span class="meter-val" id="val-comp">0</span></div>
+      <div class="meter-bar"><div class="meter-fill power" id="fill-comp" style="width:0%"></div></div>
+      <div class="meter-tick-row"><span class="meter-tick">0</span><span class="meter-tick">25</span><span class="meter-tick">50</span><span class="meter-tick">75</span><span class="meter-tick">100</span></div>
     </div>
     <div class="card-title" style="margin-top:14px">Levels</div>
     <div class="slider-block">
@@ -278,14 +300,14 @@ input[type=range] { width: 100%; height: 4px; accent-color: #00e5a0; cursor: poi
         <button class="clear-btn" onclick="clearHistory()">New conversation</button>
       </div>
     </div>
-    <div id="conversation-history"></div>
+    <div id="conversation-history" style="max-height:280px;overflow-y:auto;margin-bottom:10px;scroll-behavior:smooth"></div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input type="text" class="advisor-input" id="advisor-input"
         placeholder="Ask anything — e.g. Where should I look for JA stations?"
         onkeydown="if(event.key==='Enter') askClaude()">
       <button class="advisor-btn" id="advisor-btn" onclick="askClaude()">Ask Claude</button>
     </div>
-    <div id="advisor-response" style="min-height:40px;font-size:13px;line-height:1.7;color:#bbb;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:12px;display:none;white-space:pre-wrap"></div>
+    <div id="advisor-response" style="max-height:120px;overflow-y:auto;font-size:13px;line-height:1.7;color:#bbb;background:#141414;border:1px solid #1e1e1e;border-radius:6px;padding:12px;display:none;white-space:pre-wrap"></div>
     <div id="qsy-notification" style="display:none;margin-top:8px;padding:10px 14px;background:#003d2a;border:1px solid #00e5a0;border-radius:6px;font-size:12px;color:#00e5a0"></div>
   </div>
 </div>
@@ -333,15 +355,15 @@ function updateBandHighlight(freq) {
   }
 }
 
-var METER_VALUES = {power: 32, swr: 1, alc: 4};
+var METER_VALUES = {power: 32, swr: 1, alc: 4, comp: 2};
 function selectMeter(name) {
-  ['signal','power','swr','alc'].forEach(function(m) {
+  ['power','swr','alc','comp'].forEach(function(m) {
     document.getElementById('meter-'+m).style.display = m === name ? 'block' : 'none';
   });
   document.querySelectorAll('.msel-btn').forEach(function(b) {
     b.classList.toggle('active', b.dataset.meter === name);
   });
-  if (name !== 'signal' && METER_VALUES[name] !== undefined) {
+  if (METER_VALUES[name] !== undefined) {
     setLevel('METER', METER_VALUES[name]);
   }
 }
@@ -398,6 +420,11 @@ function updateUI(state) {
     var spct = Math.min(100, Math.max(0, (state.swr - 1) / 4 * 100));
     document.getElementById('fill-swr').style.width = spct + '%';
     document.getElementById('val-swr').textContent = state.swr.toFixed(1);
+  }
+  if (state.comp !== null && state.comp !== undefined) {
+    var cpct = Math.min(100, Math.max(0, state.comp));
+    document.getElementById('fill-comp').style.width = cpct + '%';
+    document.getElementById('val-comp').textContent = Math.round(state.comp);
   }
   if (state.af !== null && document.activeElement !== document.getElementById('sl-af')) {
     document.getElementById('sl-af').value = state.af;
@@ -490,10 +517,15 @@ function renderHistory() {
     label.textContent = turn.role === 'user' ? 'You' : 'Claude';
     var content = document.createElement('div');
     content.className = 'turn-content ' + turn.role;
-    content.textContent = turn.content;
+    if (turn.role === 'assistant') {
+      content.innerHTML = renderMarkdown(turn.content);
+    } else {
+      content.textContent = turn.content;
+    }
     container.appendChild(label);
     container.appendChild(content);
   });
+  container.scrollTop = container.scrollHeight;
 }
 
 function askClaude() {
@@ -543,7 +575,7 @@ function askClaude() {
               } catch(e) {}
             } else {
               fullResponse += chunk;
-              responseEl.textContent = fullResponse;
+              responseEl.innerHTML = renderMarkdown(fullResponse);
             }
           }
         });
@@ -600,24 +632,13 @@ var ALERT_ICONS = {
   kp_spike: 'Geomagnetic alert'
 };
 
-function showAlert(alert, explanation) {
-  var banner = document.getElementById('alert-banner');
-  var title = document.getElementById('alert-title');
-  var body = document.getElementById('alert-body');
-  var typeLabel = ALERT_ICONS[alert.type] || 'Propagation alert';
-  title.textContent = typeLabel + ' — ' + alert.message;
-  body.textContent = explanation;
-  banner.style.display = 'block';
-  // Add to conversation display so it appears in advisor history context
-  conversationDisplay.push({
-    role: 'assistant',
-    content: '[AUTO-ALERT] ' + alert.message + ': ' + explanation
-  });
-  renderHistory();
-}
-
-function dismissAlert() {
-  document.getElementById('alert-banner').style.display = 'none';
+function renderMarkdown(text) {
+  if (!text) return "";
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .split("\n\n").map(function(p) { return "<p>" + p + "</p>"; }).join("")
+    .replace(/\n/g, "<br>");
 }
 
 function connectWS() {

@@ -225,7 +225,7 @@ async def poll_propagation():
     Background task: refresh propagation data every 3 minutes,
     push to clients, and check for significant propagation changes.
     """
-    await asyncio.sleep(3.0)
+    await asyncio.sleep(10.0)  # initial delay before first PSKReporter fetch
     while True:
         try:
             state = await propagation.get_propagation_state()

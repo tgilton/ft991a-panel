@@ -29,8 +29,30 @@ import asyncio
 import httpx
 import xml.etree.ElementTree as ET
 import traceback
+import json
+import os
 from datetime import datetime, timezone
 from typing import Optional
+
+CACHE_FILE = os.path.expanduser("~/ham-panel/.propagation_cache.json")
+
+def _load_disk_cache():
+    try:
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE) as f:
+                return json.load(f)
+    except:
+        pass
+    return {}
+
+def _save_disk_cache(data: dict):
+    try:
+        with open(CACHE_FILE, "w") as f:
+            json.dump(data, f)
+    except:
+        pass
+
+_disk_cache = _load_disk_cache()
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 MY_GRID = "DM13"    # Maidenhead grid square for Indio, CA
@@ -57,7 +79,7 @@ _pskreporter_cache: dict = {}
 _solar_cache: dict = {}
 _last_psk_fetch: float = 0.0
 _last_solar_fetch: float = 0.0
-PSK_TTL = 300     # seconds between PSKReporter fetches (5 min minimum)
+PSK_TTL = 360     # seconds between PSKReporter fetches (6 min)
 SOLAR_TTL = 900   # seconds between NOAA fetches
 
 
@@ -86,6 +108,10 @@ async def fetch_pskreporter() -> dict:
     # Return cached data if still fresh
     if now - _last_psk_fetch < PSK_TTL and _pskreporter_cache:
         return _pskreporter_cache
+    # Use disk cache if in-memory cache is empty (e.g. after restart)
+    if not _pskreporter_cache and _disk_cache.get("bands"):
+        print("Using disk cache for PSKReporter data")
+        return _disk_cache["bands"]
 
     url = (
         "https://retrieve.pskreporter.info/query?"
@@ -154,6 +180,7 @@ async def fetch_pskreporter() -> dict:
 
         _pskreporter_cache = summary
         _last_psk_fetch = now
+        _save_disk_cache({"bands": summary, "timestamp": now})
         return summary
 
     except Exception as e:

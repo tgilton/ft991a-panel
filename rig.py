@@ -289,7 +289,8 @@ def get_rig_state() -> dict:
     nr = get_func("NR")                # noise reduction on/off
     anf = get_func("ANF")              # auto notch filter on/off
     preamp = get_preamp()              # 0, 10, or 20
-    swr = get_level("SWR")             # SWR ratio, 1.0 = perfect
+    swr = get_level("SWR")
+    comp = get_level("COMP")             # SWR ratio, 1.0 = perfect
     try:
         freqb = get_freqb()
         modeb = get_modeb()
@@ -309,6 +310,7 @@ def get_rig_state() -> dict:
         "anf": anf,
         "preamp": preamp,
         "swr": swr,
+        "comp": comp,
         "freqb": freqb,
         "modeb": modeb,
     }
