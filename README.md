@@ -1,5 +1,7 @@
 # FT-991A Web Control Panel
 
+**Archived.** This project's features — the PSKReporter band activity panel, NOAA solar indices, propagation alerts, and the AI band advisor with auto-QSY — have all been ported into [w7tlg-console](https://github.com/tgilton/w7tlg_console), which also covers the ACOM 1200S amplifier, SDR panadapter, antenna A/B testing, RUMLogNG-backed award tracking, and live SSB/CW spotting. w7tlg-console is the actively maintained successor; see it for anything this repo used to do.
+
 A web-based virtual front panel and AI-assisted band advisor for the Yaesu FT-991A transceiver, built for W7TLG. Runs alongside WSJT-X, RumlogNG, and other apps without conflict.
 
 ## Features
